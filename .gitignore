@@ -2,6 +2,7 @@
 unittests.cfg
 logs/
 key.json
+airflow.db
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
