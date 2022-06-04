@@ -46,3 +46,24 @@ with DAG(
             print("New rows have been added.")
         else:
             print("Encountered errors while inserting rows: {}".format(errors))
+
+    with TaskGroup(group_id='group1') as tg1:
+        for coin in COIN_LIST:
+            with TaskGroup(group_id=coin):
+                create_table = BigQueryCreateEmptyTableOperator(
+                    task_id = f"create_{coin}_table",
+                    project_id = PROJECT,
+                    dataset_id = DATASET,
+                    table_id = coin,
+                    schema_fields = [
+                        {"name": "price", "type": "FLOAT", "mode": "REQUIRED"},
+                        {"name": "market_cap", "type": "FLOAT", "mode": "REQUIRED"},
+                        {"name": "volume_24h", "type": "FLOAT", "mode": "REQUIRED"},
+                        {"name": "change_24h", "type": "FLOAT", "mode": "REQUIRED"},
+                        {"name": "ingested_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED"}
+                    ]
+                )
+                create_table >> load_data(coin, transform(coin))
+
+
+get_data() >> tg1
