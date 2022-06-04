@@ -5,7 +5,6 @@ key.json
 airflow.db
 airflow-webserver.pid
 
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
