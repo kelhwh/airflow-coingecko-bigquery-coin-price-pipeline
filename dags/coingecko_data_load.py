@@ -30,3 +30,9 @@ with DAG(
         URL = f'https://api.coingecko.com/api/v3/simple/price?ids={coins}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true'
         r = requests.get(URL)
         return [r.json(), datetime.utcnow().isoformat()]
+
+    @task(provide_context=True)
+    def transform(coin, **kwargs):
+        xcom = kwargs['ti'].xcom_pull(task_ids='get_data')
+        data = xcom[0][coin]
+        return {"price": data['usd'], "market_cap": data['usd_market_cap'], "volume_24h": data['usd_24h_vol'], "change_24h":data['usd_24h_change'], "ingested_timestamp": xcom[1]}
