@@ -1,3 +1,9 @@
+"""
+# Coingecko cryptocurrencies price pipeline
+This DAG defines tasks to ingest price data all at once from the Coingecko API.
+Then, prices of each coin are splitted and loaded into google bigquery tables respectively.
+"""
+
 from airflow import DAG
 from airflow.utils.dates import days_ago
 from airflow.decorators import task
@@ -22,22 +28,24 @@ with DAG(
     catchup = False,
     start_date=datetime(2022, 6, 1)
 ) as dag:
+    dag.doc_md = __doc__
 
-
-    @task(task_id='get_data')
+    @task(task_id='get_data', doc="Send the request to Coingecko API and get the price data of all required cryptocurrencies at once.")
     def get_data():
         coins = '%2C'.join(COIN_LIST)
         URL = f'https://api.coingecko.com/api/v3/simple/price?ids={coins}&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true&include_last_updated_at=true'
         r = requests.get(URL)
         return [r.json(), datetime.utcnow().isoformat()]
 
-    @task(provide_context=True)
+
+
+    @task(provide_context=True, doc="Transform the response json of each coin to the target schema.")
     def transform(coin, **kwargs):
         xcom = kwargs['ti'].xcom_pull(task_ids='get_data')
         data = xcom[0][coin]
         return {"price": data['usd'], "market_cap": data['usd_market_cap'], "volume_24h": data['usd_24h_vol'], "change_24h":data['usd_24h_change'], "ingested_timestamp": xcom[1]}
 
-    @task
+    @task(doc="Insert the coin price into the target table in Bigquery.")
     def load_data(coin, data):
         table_id = f'{PROJECT}.{DATASET}.{coin}'
         client = BigQueryHook().get_client()
@@ -63,6 +71,7 @@ with DAG(
                         {"name": "ingested_timestamp", "type": "TIMESTAMP", "mode": "REQUIRED"}
                     ]
                 )
+                create_table.doc = "Create table for each coin, if not exist."
                 create_table >> load_data(coin, transform(coin))
 
 
