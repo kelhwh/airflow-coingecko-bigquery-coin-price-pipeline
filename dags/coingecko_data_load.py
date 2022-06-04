@@ -36,3 +36,13 @@ with DAG(
         xcom = kwargs['ti'].xcom_pull(task_ids='get_data')
         data = xcom[0][coin]
         return {"price": data['usd'], "market_cap": data['usd_market_cap'], "volume_24h": data['usd_24h_vol'], "change_24h":data['usd_24h_change'], "ingested_timestamp": xcom[1]}
+
+    @task
+    def load_data(coin, data):
+        table_id = f'{PROJECT}.{DATASET}.{coin}'
+        client = BigQueryHook().get_client()
+        errors = client.insert_rows_json(table_id, [data])
+        if errors == []:
+            print("New rows have been added.")
+        else:
+            print("Encountered errors while inserting rows: {}".format(errors))
